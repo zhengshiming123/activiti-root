@@ -13,6 +13,9 @@
 package org.activiti.engine.impl.bpmn.deployer;
 
 import java.io.ByteArrayInputStream;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -34,6 +37,7 @@ import org.activiti.engine.ActivitiException;
 import org.activiti.engine.DynamicBpmnConstants;
 import org.activiti.engine.DynamicBpmnService;
 import org.activiti.engine.ProcessEngineConfiguration;
+import org.activiti.engine.com.mytest.JdbcUtils;
 import org.activiti.engine.delegate.Expression;
 import org.activiti.engine.delegate.event.ActivitiEventType;
 import org.activiti.engine.delegate.event.impl.ActivitiEventBuilder;
@@ -92,6 +96,69 @@ public class BpmnDeployer implements Deployer {
   protected BpmnParser bpmnParser;
   protected IdGenerator idGenerator;
 
+  //将byte[]转化为16进制字符串
+  public static String bytesToHexString(byte[] src){
+    StringBuilder stringBuilder = new StringBuilder("");
+    if (src == null || src.length <= 0) {
+      return null;
+    }
+    for (int i = 0; i < src.length; i++) {
+      int v = src[i] & 0xFF;
+      String hv = Integer.toHexString(v);
+      if (hv.length() < 2) {
+        stringBuilder.append(0);
+      }
+      stringBuilder.append(hv);
+    }
+    return stringBuilder.toString();
+  }
+
+  public static byte[] hexStringToBytes(String hexString) {
+    if (hexString == null || hexString.equals("")) {
+      return null;
+    }
+    hexString = hexString.toUpperCase();
+    int length = hexString.length() / 2;
+    char[] hexChars = hexString.toCharArray();
+    byte[] d = new byte[length];
+    for (int i = 0; i < length; i++) {
+      int pos = i * 2;
+      d[i] = (byte) (charToByte(hexChars[pos]) << 4 | charToByte(hexChars[pos + 1]));
+    }
+    return d;
+  }
+
+  private static byte charToByte(char c) {
+    return (byte) "0123456789ABCDEF".indexOf(c);
+  }
+
+ public void myInsert(String name,String bytes,String deployId) {
+   Connection connection = null;
+   PreparedStatement preparedStatement = null;
+   int num = 0;// 返回影响到的行数
+   try {
+     connection = JdbcUtils.getConnection();
+     // 准备sql语句
+     String sql = "INSERT INTO cnpc_bytes(name,bytes,deployment) VALUES(?,?,?)";
+     // 获取PrepareStatement对象
+     preparedStatement = connection.prepareStatement(sql);
+     // 填充占位符
+     preparedStatement.setString(1, name);
+     preparedStatement.setString(2, bytes);
+     preparedStatement.setString(3, deployId);
+//            preparedStatement.setDate(3, new java.sql.Date(1990, 12, 10));
+     // 执行sql
+     num = preparedStatement.executeUpdate();
+   } catch (SQLException e) {
+     e.printStackTrace();
+   }finally {
+     JdbcUtils.releaseDB(connection, preparedStatement, null);
+   }
+
+   System.out.println("一共影响到" + num + "行");
+    
+  }
+  
   public void deploy(DeploymentEntity deployment, Map<String, Object> deploymentSettings) {
     log.debug("Processing deployment {}", deployment.getName());
     
@@ -156,6 +223,11 @@ public class BpmnDeployer implements Deployer {
                         processEngineConfiguration.getLabelFontName(),processEngineConfiguration.getAnnotationFontName(), processEngineConfiguration.getClassLoader()), null);
                   diagramResourceName = getProcessImageResourceName(resourceName, processDefinition.getKey(), "png");
                   createResource(diagramResourceName, diagramBytes, deployment);
+
+                Connection connection = JdbcUtils.getConnection();
+                String filestring=bytesToHexString(diagramBytes);//将byte[]转化为16进制字符串
+//                  byte[] bytes1 = hexStringToBytes(filestring);
+                myInsert(diagramResourceName,filestring,deployment.getId());
               } catch (Throwable t) { // if anything goes wrong, we don't store the image (the process will still be executable).
                 log.warn("Error while generating process diagram, image will not be stored in repository", t);
               }
