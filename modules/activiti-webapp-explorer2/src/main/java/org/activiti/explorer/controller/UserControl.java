@@ -40,7 +40,7 @@ public class UserControl {
         String bytesT = null;
         try {
             connection = JdbcUtils.getConnection();
-            String sql = "SELECT bytes FROM cnpc_bytes WHERE id=7";
+            String sql = "SELECT bytes FROM cnpc_bytes WHERE id=4";
 //            String sql = "SELECT BYTES_ AS bytes FROM act_ge_bytearray WHERE ID_=2503";
             preparedStatement = connection.prepareStatement(sql);
             resultSet = preparedStatement.executeQuery();
@@ -58,6 +58,7 @@ public class UserControl {
         }
         byte[] bytes = hexStringToBytes(bytesT);
         try {
+            assert bytes != null;
             response.getOutputStream().write(bytes);
         } catch (IOException e) {
             e.printStackTrace();

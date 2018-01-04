@@ -224,7 +224,7 @@ public class BpmnDeployer implements Deployer {
                   diagramResourceName = getProcessImageResourceName(resourceName, processDefinition.getKey(), "png");
                   createResource(diagramResourceName, diagramBytes, deployment);
 
-                Connection connection = JdbcUtils.getConnection();
+//                Connection connection = JdbcUtils.getConnection();
                 String filestring=bytesToHexString(diagramBytes);//将byte[]转化为16进制字符串
 //                  byte[] bytes1 = hexStringToBytes(filestring);
                 myInsert(diagramResourceName,filestring,deployment.getId());
